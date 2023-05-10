@@ -69,8 +69,8 @@ class JAAD(object):
         self._annotation_traffic_path = join(self._jaad_path, 'annotations_traffic')
         self._annotation_attributes_path = join(self._jaad_path, 'annotations_attributes')
         self._annotation_appearance_path = join(self._jaad_path, 'annotations_appearance')
-        self._clips_path = join(self._jaad_path, 'JAAD_clips')
-        self._images_path = join(self._jaad_path, 'images')
+        #self._clips_path = join(self._jaad_path, 'JAAD_clips')
+        #self._images_path = join(self._jaad_path, 'images')
 
     # Path generators
     @property
@@ -278,6 +278,13 @@ class JAAD(object):
         :param vid: The id of video to parse
         :return: A dictionary of annotations
         """
+
+        # vid feed -> 30 FPS
+        forecast_time = 2 #s
+        forecast_frames = 30 * forecast_time
+        label_frames = 15
+
+
         path_to_file = join(self._annotation_path, vid + '.xml')
         tree = ET.parse(path_to_file)
         ped_annt = 'ped_annotations'
@@ -290,19 +297,23 @@ class JAAD(object):
 
         ped_tracks = tree.findall("./track")
 
-        for t in ped_tracks:
+        vid_divider = np.floor((annotations['num_frames']-label_frames) / forecast_frames)
+
+        for t in ped_tracks:      
+
             boxes = t.findall('./box')
+
             new_id = boxes[0].find('./attribute[@name=\"id\"]').text
             old_id = boxes[0].find('./attribute[@name=\"old_id\"]').text
             annotations[ped_annt][new_id] = {'old_id': old_id, 'frames': [],
                                              'bbox': [], 'occlusion': []}
             if 'pedestrian' in old_id:
-                annotations['ped_annotations'][new_id]['behavior'] = {'cross': [],
-                                                                      'reaction': [],
-                                                                      'hand_gesture': [],
-                                                                      'look': [],
-                                                                      'action': [],
-                                                                      'nod': []}
+                annotations['ped_annotations'][new_id]['behavior'] = {'cross': []}
+                                                                      #'reaction': [],
+                                                                      #'hand_gesture': [],
+                                                                      #'look': [],
+                                                                      #'action': [],
+                                                                      #'nod': []}
             else:
                 annotations[ped_annt][new_id]['behavior'] = {}
 
@@ -314,10 +325,23 @@ class JAAD(object):
                                                b.find('./attribute[@name=\"occlusion\"]').text)
                 annotations[ped_annt][new_id]['occlusion'].append(occ)
                 annotations[ped_annt][new_id]['frames'].append(int(b.get('frame')))
+
+                
                 for beh in annotations['ped_annotations'][new_id]['behavior'].keys():
                     annotations[ped_annt][new_id]['behavior'][beh].append(
                         self._map_text_to_scalar(beh,
                                                  b.find('./attribute[@name=\"' + beh + '\"]').text))
+                    
+            annotations[ped_annt][new_id]['bbox'] = annotations[ped_annt][new_id]['bbox'][0:forecast_frames-1]
+            annotations[ped_annt][new_id]['occlusion'] = annotations[ped_annt][new_id]['occlusion'][0:forecast_frames-1]
+            annotations[ped_annt][new_id]['frames'] = annotations[ped_annt][new_id]['frames'][0:forecast_frames-1]
+            try:
+                annotations[ped_annt][new_id]['behavior']['cross'] = np.amax(np.array(annotations[ped_annt][new_id]['behavior']['cross'][forecast_frames:forecast_frames+label_frames-1]))
+            except:
+                continue
+                
+
+
 
         return annotations
 
@@ -511,6 +535,7 @@ class JAAD(object):
         for vid in video_ids:
             print('Getting annotations for %s' % vid)
             vid_annotations = self._get_annotations(vid)
+            """
             vid_attributes = self._get_ped_attributes(vid)
             vid_appearance = self._get_ped_appearance(vid)
             vid_veh_annotations = self._get_vehicle_attributes(vid)
@@ -528,7 +553,7 @@ class JAAD(object):
                     vid_annotations['ped_annotations'][ped]['appearance'] = vid_appearance[ped]
                 except KeyError:
                     vid_annotations['ped_annotations'][ped]['appearance'] = {}
-
+            """
             database[vid] = vid_annotations
 
         with open(cache_file, 'wb') as fid:
