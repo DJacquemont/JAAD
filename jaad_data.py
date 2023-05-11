@@ -318,12 +318,12 @@ class JAAD(object):
             #    annotations[ped_annt][new_id]['behavior'] = {}
 
                 for b in boxes:
-                    annotations[ped_annt][new_id]['bbox'].append(
-                        [float(b.get('xtl')), float(b.get('ytl')),
-                        float(b.get('xbr')), float(b.get('ybr'))])
                     occ = self._map_text_to_scalar('occlusion',
                                                 b.find('./attribute[@name=\"occlusion\"]').text)
-                    annotations[ped_annt][new_id]['occlusion'].append(occ)
+                    #annotations[ped_annt][new_id]['occlusion'].append(occ)
+                    annotations[ped_annt][new_id]['bbox'].append(
+                        [float(b.get('xtl')), float(b.get('ytl')), float(b.get('xbr')), float(b.get('ybr')), float(occ)])
+                    
                     annotations[ped_annt][new_id]['frames'].append(int(b.get('frame')))
 
                     
