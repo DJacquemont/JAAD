@@ -314,35 +314,38 @@ class JAAD(object):
                                                                       #'look': [],
                                                                       #'action': [],
                                                                       #'nod': []}
-            else:
-                annotations[ped_annt][new_id]['behavior'] = {}
+            #else:
+            #    annotations[ped_annt][new_id]['behavior'] = {}
 
-            for b in boxes:
-                annotations[ped_annt][new_id]['bbox'].append(
-                    [float(b.get('xtl')), float(b.get('ytl')),
-                     float(b.get('xbr')), float(b.get('ybr'))])
-                occ = self._map_text_to_scalar('occlusion',
-                                               b.find('./attribute[@name=\"occlusion\"]').text)
-                annotations[ped_annt][new_id]['occlusion'].append(occ)
-                annotations[ped_annt][new_id]['frames'].append(int(b.get('frame')))
+                for b in boxes:
+                    annotations[ped_annt][new_id]['bbox'].append(
+                        [float(b.get('xtl')), float(b.get('ytl')),
+                        float(b.get('xbr')), float(b.get('ybr'))])
+                    occ = self._map_text_to_scalar('occlusion',
+                                                b.find('./attribute[@name=\"occlusion\"]').text)
+                    annotations[ped_annt][new_id]['occlusion'].append(occ)
+                    annotations[ped_annt][new_id]['frames'].append(int(b.get('frame')))
 
-                
-                for beh in annotations['ped_annotations'][new_id]['behavior'].keys():
-                    annotations[ped_annt][new_id]['behavior'][beh].append(
-                        self._map_text_to_scalar(beh,
-                                                 b.find('./attribute[@name=\"' + beh + '\"]').text))
                     
-            annotations[ped_annt][new_id]['bbox'] = annotations[ped_annt][new_id]['bbox'][0:forecast_frames-1]
-            annotations[ped_annt][new_id]['occlusion'] = annotations[ped_annt][new_id]['occlusion'][0:forecast_frames-1]
-            annotations[ped_annt][new_id]['frames'] = annotations[ped_annt][new_id]['frames'][0:forecast_frames-1]
-            try:
-                annotations[ped_annt][new_id]['behavior']['cross'] = np.amax(np.array(annotations[ped_annt][new_id]['behavior']['cross'][forecast_frames:forecast_frames+label_frames-1]))
-            except:
-                continue
+                    for beh in annotations['ped_annotations'][new_id]['behavior'].keys():
+                        annotations[ped_annt][new_id]['behavior'][beh].append(
+                            self._map_text_to_scalar(beh,
+                                                    b.find('./attribute[@name=\"' + beh + '\"]').text))
+                        
+                annotations[ped_annt][new_id]['bbox'] = annotations[ped_annt][new_id]['bbox'][0:forecast_frames-1]
+                annotations[ped_annt][new_id]['occlusion'] = annotations[ped_annt][new_id]['occlusion'][0:forecast_frames-1]
+                annotations[ped_annt][new_id]['frames'] = annotations[ped_annt][new_id]['frames'][0:forecast_frames-1]
+
+                end_idx_cross = len(annotations[ped_annt][new_id]['behavior']['cross'])-1
+                new_end_idx_cross = end_idx_cross if (end_idx_cross < forecast_frames+label_frames-1) else forecast_frames+label_frames-1
                 
-
-
-
+                if new_end_idx_cross == forecast_frames:
+                    annotations[ped_annt][new_id]['behavior']['cross'] = np.array(annotations[ped_annt][new_id]['behavior']['cross'][forecast_frames:new_end_idx_cross])
+                elif new_end_idx_cross > forecast_frames:
+                    annotations[ped_annt][new_id]['behavior']['cross'] = np.amax(np.array(annotations[ped_annt][new_id]['behavior']['cross'][forecast_frames:new_end_idx_cross]))
+                else:
+                    ped_tracks.remove(t)
+                
         return annotations
 
     def _get_ped_attributes(self, vid):
@@ -535,6 +538,11 @@ class JAAD(object):
         for vid in video_ids:
             print('Getting annotations for %s' % vid)
             vid_annotations = self._get_annotations(vid)
+            if (vid_annotations['ped_annotations'] != {}):
+                database[vid] = vid_annotations
+                print('Annotations found for %s' % vid)
+            else:
+                print('No pedestrian annotations found for %s' % vid)
             """
             vid_attributes = self._get_ped_attributes(vid)
             vid_appearance = self._get_ped_appearance(vid)
@@ -554,7 +562,7 @@ class JAAD(object):
                 except KeyError:
                     vid_annotations['ped_annotations'][ped]['appearance'] = {}
             """
-            database[vid] = vid_annotations
+            
 
         with open(cache_file, 'wb') as fid:
             pickle.dump(database, fid, pickle.HIGHEST_PROTOCOL)
