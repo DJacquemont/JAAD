@@ -297,54 +297,47 @@ class JAAD(object):
 
         ped_tracks = tree.findall("./track")
 
-        vid_divider = np.floor((annotations['num_frames']-label_frames) / forecast_frames)
+        #vid_divider = np.floor((annotations['num_frames']-label_frames) / forecast_frames)
 
-        for t in ped_tracks:      
+        for t in ped_tracks:    
 
             boxes = t.findall('./box')
 
             new_id = boxes[0].find('./attribute[@name=\"id\"]').text
-            old_id = boxes[0].find('./attribute[@name=\"old_id\"]').text
-            annotations[ped_annt][new_id] = {'old_id': old_id, 'frames': [],
-                                             'bbox': [], 'occlusion': []}
-            if 'pedestrian' in old_id:
-                annotations['ped_annotations'][new_id]['behavior'] = {'cross': []}
-                                                                      #'reaction': [],
-                                                                      #'hand_gesture': [],
-                                                                      #'look': [],
-                                                                      #'action': [],
-                                                                      #'nod': []}
-            #else:
-            #    annotations[ped_annt][new_id]['behavior'] = {}
 
-                for b in boxes:
-                    occ = self._map_text_to_scalar('occlusion',
-                                                b.find('./attribute[@name=\"occlusion\"]').text)
-                    #annotations[ped_annt][new_id]['occlusion'].append(occ)
-                    annotations[ped_annt][new_id]['bbox'].append(
-                        [float(b.get('xtl')), float(b.get('ytl')), float(b.get('xbr')), float(b.get('ybr')), float(occ)])
-                    
-                    annotations[ped_annt][new_id]['frames'].append(int(b.get('frame')))
+            if 'b' in new_id:
 
-                    
-                    for beh in annotations['ped_annotations'][new_id]['behavior'].keys():
-                        annotations[ped_annt][new_id]['behavior'][beh].append(
-                            self._map_text_to_scalar(beh,
-                                                    b.find('./attribute[@name=\"' + beh + '\"]').text))
+                old_id = boxes[0].find('./attribute[@name=\"old_id\"]').text
+
+                annotations[ped_annt][new_id] = [{'old_id': old_id, 'frames': [],
+                                                'bbox': [], 'occlusion': [], 'cross': []}]
+                if 'pedestrian' in old_id:
+                    for b in boxes:
+
+                        annotations[ped_annt][new_id][0]['bbox'].append(
+                            [float(b.get('xtl')), float(b.get('ytl')), float(b.get('xbr')), float(b.get('ybr'))])
                         
-                annotations[ped_annt][new_id]['bbox'] = annotations[ped_annt][new_id]['bbox'][0:forecast_frames-1]
-                annotations[ped_annt][new_id]['occlusion'] = annotations[ped_annt][new_id]['occlusion'][0:forecast_frames-1]
-                annotations[ped_annt][new_id]['frames'] = annotations[ped_annt][new_id]['frames'][0:forecast_frames-1]
+                        occ = self._map_text_to_scalar('occlusion',
+                                                    b.find('./attribute[@name=\"occlusion\"]').text)
+                        annotations[ped_annt][new_id][0]['occlusion'].append(occ)
+                        
+                        annotations[ped_annt][new_id][0]['frames'].append(int(b.get('frame')))
+                            
+                        annotations[ped_annt][new_id][0]['cross'].append(
+                                self._map_text_to_scalar('cross', b.find('./attribute[@name=\"cross\"]').text))
+                            
 
-                end_idx_cross = len(annotations[ped_annt][new_id]['behavior']['cross'])-1
-                new_end_idx_cross = end_idx_cross if (end_idx_cross < forecast_frames+label_frames-1) else forecast_frames+label_frames-1
-                
-                if new_end_idx_cross == forecast_frames:
-                    annotations[ped_annt][new_id]['behavior']['cross'] = np.array(annotations[ped_annt][new_id]['behavior']['cross'][forecast_frames:new_end_idx_cross])
-                elif new_end_idx_cross > forecast_frames:
-                    annotations[ped_annt][new_id]['behavior']['cross'] = np.amax(np.array(annotations[ped_annt][new_id]['behavior']['cross'][forecast_frames:new_end_idx_cross]))
-                else:
-                    ped_tracks.remove(t)
+                    annotations[ped_annt][new_id][0]['bbox'] = np.array(annotations[ped_annt][new_id][0]['bbox'][0:forecast_frames])
+                    annotations[ped_annt][new_id][0]['occlusion'] = annotations[ped_annt][new_id][0]['occlusion'][0:forecast_frames]
+                    annotations[ped_annt][new_id][0]['frames'] = annotations[ped_annt][new_id][0]['frames'][0:forecast_frames]
+
+                    end_idx_cross = min(len(annotations[ped_annt][new_id][0]['cross']), forecast_frames+label_frames+1)
+                    if end_idx_cross == forecast_frames + 1 :
+                        annotations[ped_annt][new_id][0]['cross'] = np.array(annotations[ped_annt][new_id][0]['cross'][forecast_frames+1:end_idx_cross])
+                    elif end_idx_cross > forecast_frames + 1:
+                        annotations[ped_annt][new_id][0]['cross'] = np.amax(np.array(annotations[ped_annt][new_id][0]['cross'][forecast_frames+1:end_idx_cross]))
+                    else:
+                        ped_tracks.remove(t)
                 
         return annotations
 
@@ -455,67 +448,12 @@ class JAAD(object):
             'width': int
             'height': int
             'ped_annotations'(str): {
-                'ped_id'(str): {
+                'ped_id'(str): [{
                     'old_id': str
                     'frames: list(int)
                     'occlusion': list(int)
                     'bbox': list([x1, y1, x2, y2])
-                    'behavior'(str): {
-                        'action': list(int)
-                        'reaction': list(int)
-                        'nod': list(int)
-                        'hand_gesture': list(int)
-                        'cross': list(int)
-                        'look': list(int)
-                    'appearance'(str): {
-                        'pose_front':list(int)
-                        'pose_back':list(int)
-                        'pose_left':list(int)
-                        'pose_right':list(int)
-                        'clothes_below_knee':list(int)
-                        'clothes_upper_light':list(int)
-                        'clothes_upper_dark':list(int)
-                        'clothes_lower_light':list(int)
-                        'clothes_lower_dark':list(int)
-                        'backpack':list(int)
-                        'bag_hand':list(int)
-                        'bag_elbow':list(int)
-                        'bag_shoulder':list(int)
-                        'bag_left_side':list(int)
-                        'bag_right_side':list(int)
-                        'cap':list(int)
-                        'hood':list(int)
-                        'sunglasses':list(int)
-                        'umbrella':list(int)
-                        'phone':list(int)
-                        'baby':list(int)
-                        'object':list(int)
-                        'stroller_cart':list(int)
-                        'bicycle_motorcycle':list(int)
-                    'attributes'(str): {
-                         'age': int
-                         'old_id': str
-                         'num_lanes': int
-                         'crossing': int
-                         'gender': int
-                         'crossing_point': int
-                         'decision_point': int
-                         'intersection': int
-                         'designated': int
-                         'signalized': int
-                         'traffic_direction': int
-                         'group_size': int
-                         'motion_direction': int
-            'vehicle_annotations'(str): {
-                frames(int):{
-                    action: int
-            'traffic_annotations'(str): {
-                road_type: int
-                frames(int):{
-                    ped_crossing: int
-                    ped_sign: int
-                    stop_sign: int
-                    traffic_light: int
+                    'cross': list(int)]
 
         :return: A database dictionary
         """
@@ -542,27 +480,7 @@ class JAAD(object):
                 database[vid] = vid_annotations
                 print('Annotations found for %s' % vid)
             else:
-                print('No pedestrian annotations found for %s' % vid)
-            """
-            vid_attributes = self._get_ped_attributes(vid)
-            vid_appearance = self._get_ped_appearance(vid)
-            vid_veh_annotations = self._get_vehicle_attributes(vid)
-            vid_traffic_annotations = self._get_traffic_attributes(vid)
-
-            # Combining all annotations
-            vid_annotations['vehicle_annotations'] = vid_veh_annotations
-            vid_annotations['traffic_annotations'] = vid_traffic_annotations
-            for ped in vid_annotations['ped_annotations']:
-                try:
-                    vid_annotations['ped_annotations'][ped]['attributes'] = vid_attributes[ped]
-                except KeyError:
-                    vid_annotations['ped_annotations'][ped]['attributes'] = {}
-                try:
-                    vid_annotations['ped_annotations'][ped]['appearance'] = vid_appearance[ped]
-                except KeyError:
-                    vid_annotations['ped_annotations'][ped]['appearance'] = {}
-            """
-            
+                print('No pedestrian annotations found for %s' % vid)            
 
         with open(cache_file, 'wb') as fid:
             pickle.dump(database, fid, pickle.HIGHEST_PROTOCOL)
