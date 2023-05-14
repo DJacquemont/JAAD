@@ -309,35 +309,55 @@ class JAAD(object):
 
                 old_id = boxes[0].find('./attribute[@name=\"old_id\"]').text
 
-                annotations[ped_annt][new_id] = [{'old_id': old_id, 'frames': [],
-                                                'bbox': [], 'occlusion': [], 'cross': []}]
+                tmp_bbox = []
+                tmp_occ = []
+                tmp_cross = []
+                tmp_frames = []
+
                 if 'pedestrian' in old_id:
                     for b in boxes:
-
-                        annotations[ped_annt][new_id][0]['bbox'].append(
+                        tmp_bbox.append(
                             [float(b.get('xtl')), float(b.get('ytl')), float(b.get('xbr')), float(b.get('ybr'))])
-                        
-                        occ = self._map_text_to_scalar('occlusion',
-                                                    b.find('./attribute[@name=\"occlusion\"]').text)
-                        annotations[ped_annt][new_id][0]['occlusion'].append(occ)
-                        
-                        annotations[ped_annt][new_id][0]['frames'].append(int(b.get('frame')))
-                            
-                        annotations[ped_annt][new_id][0]['cross'].append(
-                                self._map_text_to_scalar('cross', b.find('./attribute[@name=\"cross\"]').text))
-                            
+                        tmp_occ.append(self._map_text_to_scalar('occlusion',
+                                                                b.find('./attribute[@name=\"occlusion\"]').text))
+                        tmp_frames.append(int(b.get('frame')))
+                        tmp_cross.append(self._map_text_to_scalar('cross', b.find('./attribute[@name=\"cross\"]').text))
 
-                    annotations[ped_annt][new_id][0]['bbox'] = np.array(annotations[ped_annt][new_id][0]['bbox'][0:forecast_frames])
-                    annotations[ped_annt][new_id][0]['occlusion'] = annotations[ped_annt][new_id][0]['occlusion'][0:forecast_frames]
-                    annotations[ped_annt][new_id][0]['frames'] = annotations[ped_annt][new_id][0]['frames'][0:forecast_frames]
+                       
+                        
+                        
+                        #annotations[ped_annt][new_id][0]['bbox'].append(
+                        #    [float(b.get('xtl')), float(b.get('ytl')), float(b.get('xbr')), float(b.get('ybr'))])
+                        
+                        #occ = self._map_text_to_scalar('occlusion',
+                        #                            b.find('./attribute[@name=\"occlusion\"]').text)
+                        #annotations[ped_annt][new_id][0]['occlusion'].append(occ)
+                        
+                        #annotations[ped_annt][new_id][0]['frames'].append(int(b.get('frame')))
+                            
+                        #annotations[ped_annt][new_id][0]['cross'].append(
+                        #        self._map_text_to_scalar('cross', b.find('./attribute[@name=\"cross\"]').text))
+                    
+                    #sec_annotation = len(tmp_bbox)/30
+                    #print(len(tmp_bbox)/30)
+                    #print(len(tmp_bbox)%30)
 
-                    end_idx_cross = min(len(annotations[ped_annt][new_id][0]['cross']), forecast_frames+label_frames+1)
-                    if end_idx_cross == forecast_frames + 1 :
-                        annotations[ped_annt][new_id][0]['cross'] = np.array(annotations[ped_annt][new_id][0]['cross'][forecast_frames+1:end_idx_cross])
-                    elif end_idx_cross > forecast_frames + 1:
-                        annotations[ped_annt][new_id][0]['cross'] = np.amax(np.array(annotations[ped_annt][new_id][0]['cross'][forecast_frames+1:end_idx_cross]))
-                    else:
-                        ped_tracks.remove(t)
+
+                    
+                    if (len(tmp_bbox) >= forecast_frames+label_frames+1) and (len(tmp_cross) >= forecast_frames + 1):
+                        annotations[ped_annt][new_id] = [{'old_id': old_id, 'frames': [],
+                                                'bbox': [], 'occlusion': [], 'cross': []}]
+
+                        annotations[ped_annt][new_id][0]['bbox'] = np.array(tmp_bbox[0:forecast_frames])
+                        print("Shape bbox vector : " + str(len(annotations[ped_annt][new_id][0]['bbox'])))
+                        annotations[ped_annt][new_id][0]['occlusion'] = tmp_occ[0:forecast_frames]
+                        print("Shape occlusion vector : " + str(len(annotations[ped_annt][new_id][0]['occlusion'])))
+                        annotations[ped_annt][new_id][0]['frames'] = tmp_frames[0:forecast_frames]
+                        print("Shape frames vector : " + str(len(annotations[ped_annt][new_id][0]['frames'])))
+
+                        end_idx_cross = min(len(tmp_cross), forecast_frames+label_frames+1)
+                        annotations[ped_annt][new_id][0]['cross'] = np.amax(np.array(tmp_cross[forecast_frames+1:end_idx_cross]))
+                        print("Cross label : " + str(annotations[ped_annt][new_id][0]['cross']))
                 
         return annotations
 
