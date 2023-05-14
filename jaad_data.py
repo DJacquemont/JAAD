@@ -304,7 +304,7 @@ class JAAD(object):
             boxes = t.findall('./box')
 
             new_id = boxes[0].find('./attribute[@name=\"id\"]').text
-
+                  
             if 'b' in new_id:
 
                 old_id = boxes[0].find('./attribute[@name=\"old_id\"]').text
@@ -338,26 +338,62 @@ class JAAD(object):
                         #annotations[ped_annt][new_id][0]['cross'].append(
                         #        self._map_text_to_scalar('cross', b.find('./attribute[@name=\"cross\"]').text))
                     
-                    #sec_annotation = len(tmp_bbox)/30
-                    #print(len(tmp_bbox)/30)
-                    #print(len(tmp_bbox)%30)
+
+                    if (len(tmp_bbox)- 30 - 1)/30 >= 1 :
+                        annotations[ped_annt][new_id] = []
+                        
+                        for i in range(0, int(((len(tmp_bbox) - 30 - 1)/30))):
+                            print("-----------------------------")
+                            print("pedestrian id                : " + str(old_id))
+                            print("Current index                : " + str(i))
+                            
+                            annotation_bbox = np.array(tmp_bbox[i*30:(i+2)*30])
+                            annotation_occ = tmp_occ[i*30:(i+2)*30]
+                            annotation_frames = tmp_frames[i*30:(i+2)*30]
+
+                            end_idx_cross = min(len(tmp_cross[(i+2)*30:]), label_frames)
+
+                            print("Min between                  : " + str(len(tmp_cross[(i+2)*30:])) + " and " + str(label_frames) + " is " + str(end_idx_cross))
+
+                            annotation_cross = np.amax(np.array(tmp_cross[(i+2)*30:(i+2)*30+end_idx_cross]))
+
+                            annotations_dict = {'old_id': old_id, 'frames': annotation_frames,
+                                                'bbox': annotation_bbox, 'occlusion': annotation_occ, 'cross': annotation_cross}
+
+                            annotations[ped_annt][new_id].append(annotations_dict)
+                            
+                            #annotations[ped_annt][new_id][i]['bbox'] = np.array(tmp_bbox[i*30:(i+2)*30])
+                            #annotations[ped_annt][new_id][i]['occlusion'] = tmp_occ[i*30:(i+2)*30]
+                            #annotations[ped_annt][new_id][i]['frames'] = tmp_frames[i*30:(i+2)*30]
+
+                            #end_idx_cross = min(len(tmp_cross[(i+2)*30:]), (i+2)*30+label_frames+1)
+                            #annotations[ped_annt][new_id][i]['cross'] = np.amax(np.array(tmp_cross[(i+2)*30+1:end_idx_cross]))
+
+                            print("Current frames annotations   : " + str(i*30) + " - " + str((i+2)*30))
+                            print("Current frames label         : " + str((i+2)*30) + " - " + str((i+2)*30 + end_idx_cross))
+                            print("Length bbox vector           : " + str(len(annotations[ped_annt][new_id][i]['bbox'])))
+                            print("Length cross vector          : " + str(len(np.array(tmp_cross[(i+2)*30:(i+2)*30+end_idx_cross]))))
+                            print("Cross vector                 : " + str(np.array(tmp_cross[(i+2)*30:(i+2)*30+end_idx_cross])))
+                            print("End index cross              : " + str((i+2)*30 + end_idx_cross))
+                            print("Max cross value              : " + str(annotations[ped_annt][new_id][i]['cross']))
+                            
 
 
                     
-                    if (len(tmp_bbox) >= forecast_frames+label_frames+1) and (len(tmp_cross) >= forecast_frames + 1):
-                        annotations[ped_annt][new_id] = [{'old_id': old_id, 'frames': [],
-                                                'bbox': [], 'occlusion': [], 'cross': []}]
+                    #if (len(tmp_bbox) >= forecast_frames+label_frames+1) and (len(tmp_cross) >= forecast_frames + 1):
+                    #    annotations[ped_annt][new_id] = [{'old_id': old_id, 'frames': [],
+                    #                            'bbox': [], 'occlusion': [], 'cross': []}]
 
-                        annotations[ped_annt][new_id][0]['bbox'] = np.array(tmp_bbox[0:forecast_frames])
-                        print("Shape bbox vector : " + str(len(annotations[ped_annt][new_id][0]['bbox'])))
-                        annotations[ped_annt][new_id][0]['occlusion'] = tmp_occ[0:forecast_frames]
-                        print("Shape occlusion vector : " + str(len(annotations[ped_annt][new_id][0]['occlusion'])))
-                        annotations[ped_annt][new_id][0]['frames'] = tmp_frames[0:forecast_frames]
-                        print("Shape frames vector : " + str(len(annotations[ped_annt][new_id][0]['frames'])))
+                    #    annotations[ped_annt][new_id][0]['bbox'] = np.array(tmp_bbox[0:forecast_frames])
+                    #    print("Shape bbox vector : " + str(len(annotations[ped_annt][new_id][0]['bbox'])))
+                    #    annotations[ped_annt][new_id][0]['occlusion'] = tmp_occ[0:forecast_frames]
+                    #    print("Shape occlusion vector : " + str(len(annotations[ped_annt][new_id][0]['occlusion'])))
+                    #    annotations[ped_annt][new_id][0]['frames'] = tmp_frames[0:forecast_frames]
+                    #    print("Shape frames vector : " + str(len(annotations[ped_annt][new_id][0]['frames'])))
 
-                        end_idx_cross = min(len(tmp_cross), forecast_frames+label_frames+1)
-                        annotations[ped_annt][new_id][0]['cross'] = np.amax(np.array(tmp_cross[forecast_frames+1:end_idx_cross]))
-                        print("Cross label : " + str(annotations[ped_annt][new_id][0]['cross']))
+                    #    end_idx_cross = min(len(tmp_cross), forecast_frames+label_frames+1)
+                    #    annotations[ped_annt][new_id][0]['cross'] = np.amax(np.array(tmp_cross[forecast_frames+1:end_idx_cross]))
+                    #    print("Cross label : " + str(annotations[ped_annt][new_id][0]['cross']))
                 
         return annotations
 
@@ -494,13 +530,14 @@ class JAAD(object):
         video_ids = sorted(self._get_video_ids())
         database = {}
         for vid in video_ids:
+            print('---------------------------------------------------------')
             print('Getting annotations for %s' % vid)
             vid_annotations = self._get_annotations(vid)
             if (vid_annotations['ped_annotations'] != {}):
                 database[vid] = vid_annotations
-                print('Annotations found for %s' % vid)
+                print('\nAnnotations found for %s' % vid)
             else:
-                print('No pedestrian annotations found for %s' % vid)            
+                print('\nNo pedestrian annotations found for %s' % vid)            
 
         with open(cache_file, 'wb') as fid:
             pickle.dump(database, fid, pickle.HIGHEST_PROTOCOL)
