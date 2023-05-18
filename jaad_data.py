@@ -528,16 +528,23 @@ class JAAD(object):
             return database
 
         video_ids = sorted(self._get_video_ids())
-        database = {}
+        database = {'split': {'train_ID':[], 'test_ID': []}, 'annotations': {}}
+        database_vid_ID = []
         for vid in video_ids:
             print('---------------------------------------------------------')
             print('Getting annotations for %s' % vid)
             vid_annotations = self._get_annotations(vid)
             if (vid_annotations['ped_annotations'] != {}):
-                database[vid] = vid_annotations
+                database['annotations'][vid] = vid_annotations
+                database_vid_ID.append(vid)
                 print('\nAnnotations found for %s' % vid)
             else:
-                print('\nNo pedestrian annotations found for %s' % vid)            
+                print('\nNo pedestrian annotations found for %s' % vid)   
+
+        train_ID , test_ID = train_test_split(database_vid_ID,test_size=0.2)
+
+        database['split']['train_ID'] = train_ID
+        database['split']['test_ID'] = test_ID
 
         with open(cache_file, 'wb') as fid:
             pickle.dump(database, fid, pickle.HIGHEST_PROTOCOL)
