@@ -164,6 +164,7 @@ class JAAD(object):
     def generate_database(self):
         """
         Generate a database of jaad dataset by integrating all annotations
+        
         Dictionary structure:
         'annotations': {
             'vid_id'(str): {
@@ -171,15 +172,15 @@ class JAAD(object):
                 'width':        int
                 'height':       int
                 'ped_annotations'(str): {
-                    'ped_id'(str): list(dict) {
+                    'ped_id'(str): list (dict) {
                         'old_id':       str
-                        'frames:        list(int)
-                        'occlusion':    list(int)
-                        'bbox':         list([x1, y1, x2, y2])
-                        'cross':        list(int)}
+                        'frames:        list (int)
+                        'occlusion':    list (int)
+                        'bbox':         list ([x1 (float), y1 (float), x2 (float), y2 (float)])
+                        'cross':        list (int)}}}}
         'split': {
-            'train_ID': list(int)
-            'test_ID':  list(int)}
+            'train_ID': list (str)
+            'test_ID':  list (str)}
 
         :return: A database dictionary
         """
