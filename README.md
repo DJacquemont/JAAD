@@ -6,7 +6,7 @@ This repository contains code and annotations to create a dataset of individual 
 
 To create the dataset, open a terminal in the *JAAD* folder and run the following command :
 ```
-python3 database.py
+python3 dataset.py
 ```
 This code was tested with Python 3.10.6.
 
