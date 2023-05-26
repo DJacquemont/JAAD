@@ -23,17 +23,26 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 
-import pickle
+import pickle5 as pickle
+import argparse
 import numpy as np
 from tqdm import tqdm
 import xml.etree.ElementTree as ET
 from os.path import join, abspath, exists, dirname, isfile
 import os
 import cv2
-import openpifpaf
 import PIL
+import openpifpaf
 import torch
 from IPython.display import display, clear_output
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--data_path', type=str, default=dirname(abspath('__file__')), help="Path to the folder of the repository")
+    parser.add_argument('--compute_kps', type=bool, default=True, help="Compute keypoints")
+    parser.add_argument('--regen', type=bool, default=False, help="Regenerate the dataset")
+    opts = parser.parse_args()
+    return opts
 
 class JAAD(object):
     def __init__(self, data_path = '', compute_kps = False, regen = False):
@@ -454,14 +463,6 @@ class JAAD(object):
 
 if __name__ == "__main__":
 
-    DS = JAAD(data_path='', compute_kps = True, regen = True)
-
-    try:
-        DS.generate_database()
-    except:
-        pass
-    
-    try:
-        DS.get_stats()
-    except:
-        pass
+    opts = parse_args()
+    DS = JAAD(data_path=opts.data_path, compute_kps = opts.compute_kps, regen = opts.regen)
+    DS.generate_database()

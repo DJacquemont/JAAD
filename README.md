@@ -11,6 +11,7 @@ Packages required :
 ```
 pip install pytorch torchvision torchaudio pytorch-cuda=11.6 -c pytorch -c nvidia
 pip install --upgrade openpifpaf==0.10.1
+pip install pickle5
 ```
 
 This code was developped and tested with Python 3.10.6.
