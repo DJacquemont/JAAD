@@ -217,9 +217,9 @@ class JAAD(object):
         """
 
         output_kp_seq = []
-        max_valid_dist = 30
 
         for frame_nbr, bbox in enumerate(bbox_ped):
+            max_valid_dist = (abs(bbox[0] - bbox[2]) + abs(bbox[1] - bbox[3]))/2
 
             x_mean_bbox = (bbox[0] + bbox[2])/2
             y_mean_bbox = (bbox[1] + bbox[3])/2
