@@ -282,7 +282,7 @@ class JAAD(object):
             images_batch = images_batch.cuda()
             fields_batch = processor.fields(images_batch)
 
-            for i in range(batch_size):
+            for i in range(fields_batch):
               predictions = processor.annotations(fields_batch[i])
               
               if not predictions:
