@@ -61,10 +61,10 @@ class JAAD(object):
         self._jaad_path = data_path if data_path else dirname(abspath('__file__'))
         assert exists(self._jaad_path), \
             'Jaad path does not exist: {}'.format(self._jaad_path)
-        self._annotation_path = join(self._jaad_path, 'JAAD_DS/annotations')
-        self._inference_path = join(self._jaad_path, 'JAAD_DS/Inference')
-        self._videos_path = join(self._jaad_path, 'JAAD_DS/JAAD_clips')
-        self._checkpoint_path = join(self._jaad_path, 'JAAD_DS/jaad_dataset.pkl')
+        self._annotation_path = join(self._jaad_path, 'datagen/JAAD_DS/annotations')
+        self._inference_path = join(self._jaad_path, 'datagen/JAAD_DS/Inference')
+        self._videos_path = join(self._jaad_path, 'datagen/JAAD_DS/JAAD_clips')
+        self._checkpoint_path = join(self._jaad_path, 'datagen/JAAD_DS/jaad_dataset.pkl')
 
 
 
@@ -177,7 +177,7 @@ class JAAD(object):
         f = join(self._videos_path, vid + '.mp4')
         vidcap = cv2.VideoCapture(f)
 
-        out = cv2.VideoWriter(join(self._jaad_path,'JAAD_DS/sample_DS.mp4'),
+        out = cv2.VideoWriter(join(self._jaad_path,'datagen/JAAD_DS/sample_DS.mp4'),
                               cv2.VideoWriter_fourcc(*'DIVX'),15, (1920, 1080))
 
         for idx in range(self._fps*self._t_pred-1):
@@ -199,7 +199,7 @@ class JAAD(object):
         out.release()
 
         print('Sample video sucessfully created')
-        print('Path ', join(self._jaad_path,'JAAD_DS/samples/sample_DS.mp4'))
+        print('Path ', join(self._jaad_path,'datagen/JAAD_DS/samples/sample_DS.mp4'))
         return
 
 
@@ -302,7 +302,7 @@ class JAAD(object):
         video (if compute_kps = True)
         :param vid: The id of video to parse
         :param processor: The processor used to get the 2d keypoints
-        :return: A dictionary of annotations
+        :return: A dictionary of annotations, and the number of sequences per video
         """
 
         forecast_step = int(self._t_pred * self._fps / 2)
@@ -384,29 +384,26 @@ class JAAD(object):
         Generate a dataset based on JAAD database
         :param compute_kps: If True, 2d keypoints are computed
         :param regenerate: If True, the dataset is regenerated
-
         
         Dictionary structure:
-        'annotations': {
-            'vid_id'(str): {
-                'num_frames':   int
-                'width':        int
-                'height':       int
-                'ped_annotations'(str): {   
-                    'ped_id'(str): list (dict) {
-                        'old_id':       str
-                        'frames':       list (int)
-                        'occlusion':    list (int)
-                        'bbox':         list ([x1 (float), y1 (float), x2 (float), y2 (float)])
-                        '2dkp':         list (array(array))
-                        'cross':        list (int)}}}}
-        'split': {
-            'train_ID': list (str)
-            'test_ID':  list (str)}
+        'annotations': 
+            'vid_id'(str): 
+                'num_frames':               int
+                'width':                    int
+                'height':                   int
+                'ped_annotations'(str):     list (dict)
+                    'ped_id'(str):              list (dict) {
+                        'old_id':                   str
+                        'frames':                   list (int)
+                        'occlusion':                list (int)
+                        'bbox':                     list ([x1 (float), y1 (float), x2 (float), y2 (float)])
+                        '2dkp':                     list (array(array))
+                        'cross':                    list (int)
+        'split': 
+            'train_ID':     list (str)
+            'test_ID':      list (str)
         'ckpt': str
         'seq_per_vid': list (int)
-
-        :return: A dataset dictionary
         """
         if compute_kps:
             net_cpu, _ = openpifpaf.network.factory(checkpoint='resnet101')
@@ -464,7 +461,7 @@ class JAAD(object):
                   print('\nDatabase written to {}'.format(self._checkpoint_path))
                 else:
                   print('\nCheckpoint saved to {}'.format(self._checkpoint_path))
-        return database 
+        return 
 
 
 
