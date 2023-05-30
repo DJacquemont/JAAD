@@ -28,24 +28,23 @@ import argparse
 import numpy as np
 from tqdm import tqdm
 import xml.etree.ElementTree as ET
-from os.path import join, abspath, exists, dirname, isfile
+from os.path import join, abspath, exists, dirname, isfile, splitext
 import os
 import cv2
 import PIL
-import openpifpaf
-import torch
-from IPython.display import display, clear_output
+#import openpifpaf
+#import torch
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_path', type=str, default=dirname(abspath('__file__')), help="Path to the folder of the repository")
-    parser.add_argument('--compute_kps', type=bool, default=True, help="Compute keypoints")
-    parser.add_argument('--regen', type=bool, default=False, help="Regenerate the dataset")
+    parser.add_argument('--compute_kps', help="Compute keypoints", action="store_true")
+    parser.add_argument('--regen', help="Regenerate the dataset", action="store_true")
     opts = parser.parse_args()
     return opts
 
 class JAAD(object):
-    def __init__(self, data_path = '', compute_kps = False, regen = False):
+    def __init__(self, data_path = ''):
         """
         Constructor of the jaad class
         :param data_path: Path to the folder of the dataset
@@ -57,16 +56,15 @@ class JAAD(object):
         self._fps = 30
         self._t_pred = 1
         self._label_frames = 30
-        self.compute_kps = compute_kps
-        self.regen = regen
 
         # Paths
         self._jaad_path = data_path if data_path else dirname(abspath('__file__'))
         assert exists(self._jaad_path), \
             'Jaad path does not exist: {}'.format(self._jaad_path)
         self._annotation_path = join(self._jaad_path, 'JAAD_DS/annotations')
+        self._inference_path = join(self._jaad_path, 'JAAD_DS/Inference')
         self._videos_path = join(self._jaad_path, 'JAAD_DS/JAAD_clips')
-        self._checkpoint_path = join(self._jaad_path, 'jaad_dataset.pkl')
+        self._checkpoint_path = join(self._jaad_path, 'JAAD_DS/jaad_dataset.pkl')
 
 
 
@@ -260,6 +258,7 @@ class JAAD(object):
         :param processor: The processor used to get the 2d keypoints
         :return: an array of list of 2d keypoints for a sequence
         """
+
         f = join(self._videos_path, vid + '.mp4')
         vidcap = cv2.VideoCapture(f)
         success, image = vidcap.read()
@@ -282,7 +281,7 @@ class JAAD(object):
             images_batch = images_batch.cuda()
             fields_batch = processor.fields(images_batch)
 
-            for i in range(fields_batch):
+            for i in range(len(fields_batch)):
               predictions = processor.annotations(fields_batch[i])
               
               if not predictions:
@@ -296,11 +295,11 @@ class JAAD(object):
 
 
 
-    def _get_annotations(self, vid, processor):
+    def _get_annotations(self, vid, compute_kps, processor = None):
         """
         Generates a dictinary of annotations by parsing the video XML file 
         and generating 2d keypoints for the all pedestrians in the whole 
-        video (if self.compute_kps = True)
+        video (if compute_kps = True)
         :param vid: The id of video to parse
         :param processor: The processor used to get the 2d keypoints
         :return: A dictionary of annotations
@@ -347,7 +346,7 @@ class JAAD(object):
                         tmp_cross.append(self._map_text_to_scalar('cross', b.find('./attribute[@name=\"cross\"]').text))
 
                     # Creating 2d KP
-                    if pred_data is None and self.compute_kps:
+                    if pred_data is None and compute_kps:
                         pred_data = self._get_2dkp_vid(vid, processor)
 
                     # Dividing DS in multiple 2s sequences
@@ -367,7 +366,7 @@ class JAAD(object):
                             end_idx_cross = min(len(tmp_cross[(i+2)*forecast_step:]), self._label_frames)
                             annotation_cross = np.amax(np.array(tmp_cross[(i+2)*forecast_step:(i+2)*forecast_step+end_idx_cross]))
 
-                            if self.compute_kps : 
+                            if compute_kps : 
                                 annotations_2dkp = self._get_2dkp_seq(pred_data[annotation_frames], annotation_bbox)
                                 annotations_dict = {'old_id': old_id, 'frames': annotation_frames,
                                                 'bbox': annotation_bbox, '2dkp': annotations_2dkp, 'occlusion': annotation_occ, 'cross': annotation_cross}
@@ -380,9 +379,12 @@ class JAAD(object):
 
 
     
-    def generate_database(self):
+    def generate_dataset(self, compute_kps, regenerate):
         """
-        Generate a database of jaad dataset by integrating all annotations
+        Generate a dataset based on JAAD database
+        :param compute_kps: If True, 2d keypoints are computed
+        :param regenerate: If True, the dataset is regenerated
+
         
         Dictionary structure:
         'annotations': {
@@ -390,7 +392,7 @@ class JAAD(object):
                 'num_frames':   int
                 'width':        int
                 'height':       int
-                'ped_annotations'(str): {
+                'ped_annotations'(str): {   
                     'ped_id'(str): list (dict) {
                         'old_id':       str
                         'frames':       list (int)
@@ -404,17 +406,17 @@ class JAAD(object):
         'ckpt': str
         'seq_per_vid': list (int)
 
-        :return: A database dictionary
+        :return: A dataset dictionary
         """
-
-        net_cpu, _ = openpifpaf.network.factory(checkpoint='resnet101')
-        net = net_cpu.cuda()
-        decode = openpifpaf.decoder.factory_decode(net, seed_threshold=0.5)
-        processor = openpifpaf.decoder.Processor(net, decode, instance_threshold=0.2, keypoint_threshold=0.3)
+        if compute_kps:
+            net_cpu, _ = openpifpaf.network.factory(checkpoint='resnet101')
+            net = net_cpu.cuda()
+            decode = openpifpaf.decoder.factory_decode(net, seed_threshold=0.5)
+            processor = openpifpaf.decoder.Processor(net, decode, instance_threshold=0.2, keypoint_threshold=0.3)
 
         video_ids = sorted(self._get_video_ids())
 
-        if os.path.isfile(self._checkpoint_path) and not self.regen:
+        if os.path.isfile(self._checkpoint_path) and not regenerate:
             with open(self._checkpoint_path, 'rb') as f:
                 database = pickle.load(f)
             database_vid_ID = database['split']['train_ID']+database['split']['test_ID']
@@ -437,14 +439,17 @@ class JAAD(object):
 
             print('\nGetting annotations for %s' % vid)
             database['ckpt'] = vid
-            
-            vid_annotations, nbr_seq = self._get_annotations(vid, processor)
+
+            processor = processor if compute_kps else None
+            vid_annotations, nbr_seq = self._get_annotations(vid, processor, compute_kps)
+
             if (nbr_seq != 0):
                 database['annotations'][vid] = vid_annotations
                 database_vid_ID.append(vid)
                 nbr_seq_vid_ID.append(nbr_seq)
             
-            if self.compute_kps or vid == video_ids[-1]:
+            if compute_kps or vid == video_ids[-1]:
+
                 # Creating testset/trainset
                 cumsum = np.cumsum(nbr_seq_vid_ID)/sum(nbr_seq_vid_ID)
                 database['seq_per_vid'] = nbr_seq_vid_ID
@@ -459,10 +464,12 @@ class JAAD(object):
                   print('\nDatabase written to {}'.format(self._checkpoint_path))
                 else:
                   print('\nCheckpoint saved to {}'.format(self._checkpoint_path))
-        return database
+        return database 
+
+
 
 if __name__ == "__main__":
 
     opts = parse_args()
-    DS = JAAD(data_path=opts.data_path, compute_kps = opts.compute_kps, regen = opts.regen)
-    DS.generate_database()
+    DS = JAAD(data_path=opts.data_path)
+    DS.generate_dataset(opts.compute_kps, opts.regen)
