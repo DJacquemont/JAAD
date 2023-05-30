@@ -32,8 +32,8 @@ from os.path import join, abspath, exists, dirname, isfile, splitext
 import os
 import cv2
 import PIL
-#import openpifpaf
-#import torch
+import openpifpaf
+import torch
 
 def parse_args():
     parser = argparse.ArgumentParser()

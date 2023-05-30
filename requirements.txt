@@ -1,0 +1,5 @@
+opencv_python
+openpifpaf
+pickle5
+torch
+tqdm
