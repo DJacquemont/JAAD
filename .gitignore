@@ -1,7 +1,5 @@
 __pycache__/
 test.ipynb
-inference.py
 infer_DB/
 JAAD_DS/jaad_dataset.pkl
-Project_README.md
 Report.md
